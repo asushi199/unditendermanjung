@@ -80,7 +80,7 @@ export default function GuidePage() {
           items={[
             "Jalankan start_server.bat pada komputer pelayan.",
             "Semua orang guna http://ALAMAT-IP:8088/... (WiFi sama). Port 8088 elak konflik Acer.",
-            "Untuk internet: jalankan start_internet_tunnel.bat (lihat README).",
+            "WiFi tidak stabil: komputer pelayan guna hotspot 4G; semua orang guna URL Cloudflare (display/admin/kaunter). Paparan disegarkan ~0.4 saat melalui terowong.",
             "Letak logo: frontend/public/ppd-logo.png kemudian npm run build.",
           ]}
         />

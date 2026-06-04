@@ -51,6 +51,7 @@ Skrip akan: sync logo → build frontend → **cari port kosong** (8088, 8090, �
 - Pantau tetingkap: **PORT DIPILIH** dan fail `ALAMAT_ACARA.txt` (dijana pada folder projek)
 - Pantas tanpa build: `start_server_quick.bat`
 - Internet (opsyenal): `start_internet_tunnel.bat` (Cloudflare) — selepas `start_server.bat`
+- **WiFi dewan tidak stabil:** jangan harap `http://IP:PORT` antara peranti. Guna **satu** URL `https://….trycloudflare.com` untuk semua; komputer pelayan sambung internet melalui **hotspot 4G/5G** (bukan WiFi dewan) supaya `cloudflared` stabil. `/display` dan `/admin` melalui terowong: poll ~0.4s, tanpa SSE.
 
 **Nota port:** Laptop Acer sering guna **8080** (`AcerLightingService`). Sistem elak 8080 secara automatik.
 

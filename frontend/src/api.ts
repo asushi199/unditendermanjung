@@ -191,10 +191,46 @@ export async function triggerBackup() {
   return data;
 }
 
-export function useEventSource(onState: (s: PublicState) => void) {
+export type LiveStateOptions = {
+  /** Sandaran polling (ms). 0 = tiada poll berkala. */
+  pollIntervalMs?: number;
+  /** false = jangan guna SSE (terowong Cloudflare / ngrok). */
+  useSse?: boolean;
+};
+
+/** Tetapan sync ikut cara pengguna buka laman (127 vs LAN vs terowong). */
+export function liveSyncOptions(): LiveStateOptions {
+  if (typeof window === "undefined") return {};
+  const h = window.location.hostname.toLowerCase();
+  const viaTunnel =
+    h.endsWith(".trycloudflare.com") ||
+    h.endsWith(".trycloudflare.com.") ||
+    h.includes("ngrok") ||
+    h.endsWith(".ngrok-free.app");
+  if (viaTunnel) {
+    return { pollIntervalMs: 400, useSse: false };
+  }
+  if (h === "127.0.0.1" || h === "localhost") {
+    return {};
+  }
+  return { pollIntervalMs: 1500 };
+}
+
+export function useEventSource(
+  onState: (s: PublicState) => void,
+  options?: LiveStateOptions
+) {
+  const pollMs = options?.pollIntervalMs ?? 0;
+  const useSse = options?.useSse !== false;
+
   React.useEffect(() => {
     let es: EventSource | null = null;
     let retry = 0;
+    let pollId: ReturnType<typeof setInterval> | undefined;
+
+    const refresh = () => {
+      fetchState().then(onState).catch(() => {});
+    };
 
     const connect = () => {
       es = new EventSource(`${API}/api/events/stream`);
@@ -214,16 +250,23 @@ export function useEventSource(onState: (s: PublicState) => void) {
       };
     };
 
-    connect();
-    fetchState().then(onState);
+    if (useSse) connect();
+    refresh();
 
-    return () => es?.close();
-  }, [onState]);
+    if (pollMs > 0) {
+      pollId = setInterval(refresh, pollMs);
+    }
+
+    return () => {
+      es?.close();
+      if (pollId) clearInterval(pollId);
+    };
+  }, [onState, pollMs, useSse]);
 }
 
-export function useLiveState() {
+export function useLiveState(options?: LiveStateOptions) {
   const [state, setState] = React.useState<PublicState | null>(null);
   const onState = React.useCallback((s: PublicState) => setState(s), []);
-  useEventSource(onState);
+  useEventSource(onState, options);
   return state;
 }

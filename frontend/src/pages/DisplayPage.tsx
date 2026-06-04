@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { useLiveState } from "../api";
+import { liveSyncOptions, useLiveState } from "../api";
 import DisplayBranding from "../components/DisplayBranding";
 
 export default function DisplayPage() {
-  const state = useLiveState();
+  const state = useLiveState(liveSyncOptions());
 
   useEffect(() => {
     document.body.classList.add("display-mode");

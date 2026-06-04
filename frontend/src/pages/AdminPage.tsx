@@ -11,6 +11,7 @@ import {
   showWaitingScreen,
   submitWinner,
   triggerBackup,
+  liveSyncOptions,
   useLiveState,
 } from "../api";
 
@@ -24,7 +25,7 @@ export default function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [revising, setRevising] = useState(false);
   const [resetPwd, setResetPwd] = useState("");
-  const liveState = useLiveState();
+  const liveState = useLiveState(liveSyncOptions());
   const submittingRef = useRef(false);
 
   const load = useCallback(() => {
