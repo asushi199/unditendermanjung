@@ -173,8 +173,12 @@ export async function nextProject() {
   return data;
 }
 
-export async function resetRehearsal() {
-  const r = await fetch(`${API}/api/admin/reset-rehearsal`, { method: "POST" });
+export async function resetRehearsal(password: string) {
+  const r = await fetch(`${API}/api/admin/reset-rehearsal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
   const data = await r.json();
   if (!r.ok) throw new Error(data.detail || "Ralat");
   return data;

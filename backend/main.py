@@ -75,6 +75,10 @@ class PinBody(BaseModel):
     pin: str
 
 
+class ResetRehearsalBody(BaseModel):
+    password: str
+
+
 class RevealBody(BaseModel):
     project_id: int
 
@@ -261,9 +265,12 @@ def export_registrations():
 
 
 @app.post("/api/admin/reset-rehearsal")
-def api_reset():
-    reset_rehearsal()
-    return {"ok": True}
+def api_reset(body: ResetRehearsalBody):
+    try:
+        reset_rehearsal(body.password)
+        return {"ok": True}
+    except PermissionError as e:
+        raise HTTPException(403, detail=str(e))
 
 
 @app.post("/api/admin/backup")

@@ -16,8 +16,10 @@ export default function PrintRegistrationsPage() {
   const autoPrint = searchParams.get("cetak") === "1";
 
   useEffect(() => {
+    document.body.classList.add("print-landscape");
     listRegistrationsExport().then(setRows);
     fetchStats().then(setStats);
+    return () => document.body.classList.remove("print-landscape");
   }, []);
 
   useEffect(() => {
@@ -28,8 +30,12 @@ export default function PrintRegistrationsPage() {
   }, [autoPrint, rows.length]);
 
   return (
-    <div className="print-report">
+    <div className="print-report print-report--register">
       <div className="print-toolbar no-print">
+        <p className="print-tip">
+          Tip cetak: <strong>Landscape</strong>, margin <strong>Minimum</strong>. Senarai panjang — biar
+          skala 100%; nama panjang akan turun baris.
+        </p>
         <button type="button" className="btn primary" onClick={() => window.print()}>
           Cetak / Simpan PDF
         </button>
@@ -57,24 +63,24 @@ export default function PrintRegistrationsPage() {
         </p>
       </header>
 
-      <table className="print-table">
+      <table className="print-table print-table--register">
         <thead>
           <tr>
-            <th>Bil</th>
-            <th>Nombor Undian</th>
-            <th>Nama Syarikat</th>
-            <th>Kaunter</th>
-            <th>Tarikh & Masa (MYT)</th>
+            <th className="col-bil">Bil</th>
+            <th className="col-num">Nombor</th>
+            <th className="col-co">Nama Syarikat</th>
+            <th className="col-kt">Kaunter</th>
+            <th className="col-time">Tarikh & Masa (MYT)</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={`${r.draw_number}-${i}`}>
-              <td>{i + 1}</td>
-              <td className="num">{r.draw_number}</td>
-              <td>{r.company_name}</td>
-              <td>{r.counter_id}</td>
-              <td>{r.registered_at}</td>
+              <td className="col-bil">{i + 1}</td>
+              <td className="col-num num">{r.draw_number}</td>
+              <td className="col-co print-cell-wrap">{r.company_name}</td>
+              <td className="col-kt">{r.counter_id}</td>
+              <td className="col-time">{r.registered_at}</td>
             </tr>
           ))}
         </tbody>

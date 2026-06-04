@@ -7,6 +7,7 @@ from typing import AsyncGenerator
 
 from config import (
     ADMIN_PIN,
+    RESET_REHEARSAL_PASSWORD,
     BACKUPS_DIR,
     DB_PATH,
     EVENT_HEADLINE,
@@ -591,7 +592,9 @@ def stats() -> dict:
         conn.close()
 
 
-def reset_rehearsal() -> None:
+def reset_rehearsal(password: str) -> None:
+    if password != RESET_REHEARSAL_PASSWORD:
+        raise PermissionError("Kata laluan tidak sah.")
     with db_transaction() as conn:
         conn.execute(
             """UPDATE draw_session SET

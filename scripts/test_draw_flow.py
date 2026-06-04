@@ -24,7 +24,7 @@ def get(path: str):
 
 
 def main():
-    post("/api/admin/reset-rehearsal")
+    post("/api/admin/reset-rehearsal", {"password": "manjunghebat"})
     post("/api/register", {"company_id": 1, "counter_id": 1})
 
     state = get("/api/state")

@@ -8,7 +8,9 @@ export default function PrintResultsPage() {
   const autoPrint = searchParams.get("cetak") === "1";
 
   useEffect(() => {
+    document.body.classList.add("print-landscape");
     fetchProjects().then(setProjects);
+    return () => document.body.classList.remove("print-landscape");
   }, []);
 
   useEffect(() => {
@@ -21,8 +23,12 @@ export default function PrintResultsPage() {
   const done = projects.filter((p) => p.completed);
 
   return (
-    <div className="print-report">
+    <div className="print-report print-report--results">
       <div className="print-toolbar no-print">
+        <p className="print-tip">
+          Tip cetak: pilih <strong>Landscape (Lanskap)</strong>, margin <strong>Minimum</strong>, dan
+          skala <strong>100%</strong>. Nama syarikat panjang akan turun baris secara automatik.
+        </p>
         <button type="button" className="btn primary" onClick={() => window.print()}>
           Cetak / Simpan PDF
         </button>
@@ -44,26 +50,26 @@ export default function PrintResultsPage() {
         </p>
       </header>
 
-      <table className="print-table">
+      <table className="print-table print-table--results">
         <thead>
           <tr>
-            <th>Bil</th>
-            <th>Kod</th>
-            <th>Sekolah</th>
-            <th>Peruntukan</th>
-            <th>Nombor</th>
-            <th>Syarikat Berjaya</th>
+            <th className="col-bil">Bil</th>
+            <th className="col-kod">Kod</th>
+            <th className="col-school">Sekolah</th>
+            <th className="col-amt">Peruntukan</th>
+            <th className="col-num">Nombor</th>
+            <th className="col-co">Syarikat Berjaya</th>
           </tr>
         </thead>
         <tbody>
           {done.map((p) => (
             <tr key={p.id}>
-              <td>{p.bil}</td>
-              <td>{p.kod_sekolah}</td>
-              <td>{p.school}</td>
-              <td>{p.amount_display}</td>
-              <td className="num">{p.result_number}</td>
-              <td>{p.result_company}</td>
+              <td className="col-bil">{p.bil}</td>
+              <td className="col-kod">{p.kod_sekolah}</td>
+              <td className="col-school print-cell-wrap">{p.school}</td>
+              <td className="col-amt">{p.amount_display}</td>
+              <td className="col-num num">{p.result_number}</td>
+              <td className="col-co print-cell-wrap">{p.result_company ?? "—"}</td>
             </tr>
           ))}
         </tbody>

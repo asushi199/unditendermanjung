@@ -23,6 +23,7 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Record<string, number | string | null>>({});
   const [busy, setBusy] = useState(false);
   const [revising, setRevising] = useState(false);
+  const [resetPwd, setResetPwd] = useState("");
   const liveState = useLiveState();
   const submittingRef = useRef(false);
 
@@ -301,49 +302,75 @@ export default function AdminPage() {
 
           <details className="admin-v2-tools">
             <summary>Utiliti</summary>
-            <div className="admin-v2-tools-inner">
-              <a className="btn secondary" href="/api/registrations/export" download>
-                Eksport Daftar CSV
-              </a>
-              <Link className="btn secondary" to="/cetak/pendaftaran?cetak=1" target="_blank">
-                Cetak Pendaftaran (PDF)
-              </Link>
-              <a className="btn secondary" href="/api/draw-results/export" download>
-                Eksport Keputusan CSV
-              </a>
-              <Link className="btn secondary" to="/cetak/keputusan?cetak=1" target="_blank">
-                Cetak Keputusan (PDF)
-              </Link>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={async () => {
-                  try {
-                    const r = await triggerBackup();
-                    setMessage(`Sandaran: ${r.path}`);
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Ralat");
-                  }
-                }}
-              >
-                Sandaran DB
-              </button>
-              <button
-                type="button"
-                className="btn danger"
-                onClick={async () => {
-                  if (!confirm("Reset latihan?")) return;
-                  try {
-                    await resetRehearsal();
-                    load();
-                    setMessage("Reset selesai.");
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Ralat");
-                  }
-                }}
-              >
-                Reset Latihan
-              </button>
+            <div className="admin-v2-tools-panel">
+              <section className="admin-v2-tools-section">
+                <h4 className="admin-v2-tools-heading">Eksport &amp; cetak</h4>
+                <div className="admin-v2-tools-grid">
+                  <a className="btn secondary" href="/api/registrations/export" download>
+                    Eksport Daftar CSV
+                  </a>
+                  <Link className="btn secondary" to="/cetak/pendaftaran?cetak=1" target="_blank">
+                    Cetak Pendaftaran (PDF)
+                  </Link>
+                  <a className="btn secondary" href="/api/draw-results/export" download>
+                    Eksport Keputusan CSV
+                  </a>
+                  <Link className="btn secondary" to="/cetak/keputusan?cetak=1" target="_blank">
+                    Cetak Keputusan (PDF)
+                  </Link>
+                </div>
+              </section>
+              <section className="admin-v2-tools-section">
+                <h4 className="admin-v2-tools-heading">Penyelenggaraan</h4>
+                <button
+                  type="button"
+                  className="btn secondary admin-v2-tools-single"
+                  onClick={async () => {
+                    try {
+                      const r = await triggerBackup();
+                      setMessage(`Sandaran: ${r.path}`);
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Ralat");
+                    }
+                  }}
+                >
+                  Sandaran DB
+                </button>
+              </section>
+              <section className="admin-v2-tools-danger">
+                <h4 className="admin-v2-tools-heading">Reset latihan</h4>
+                <p className="admin-v2-tools-hint">
+                  Padam semua pendaftaran dan keputusan. Hanya untuk latihan — jangan guna pada hari rasmi.
+                </p>
+                <div className="admin-v2-tools-danger-row">
+                  <input
+                    type="password"
+                    className="admin-v2-tools-pwd"
+                    placeholder="Kata laluan"
+                    value={resetPwd}
+                    onChange={(e) => setResetPwd(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    className="btn danger"
+                    disabled={!resetPwd}
+                    onClick={async () => {
+                      if (!confirm("Reset latihan? Semua pendaftaran & keputusan akan dipadam.")) return;
+                      try {
+                        await resetRehearsal(resetPwd);
+                        setResetPwd("");
+                        load();
+                        setMessage("Reset selesai.");
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Ralat");
+                      }
+                    }}
+                  >
+                    Reset Latihan
+                  </button>
+                </div>
+              </section>
             </div>
           </details>
         </main>
