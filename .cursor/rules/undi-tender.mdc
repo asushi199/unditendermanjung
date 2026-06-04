@@ -1,0 +1,34 @@
+---
+description: Undi Tender Manjung — konteks projek & konvensyen umum
+alwaysApply: true
+---
+
+# Undi Tender (PPD Manjung)
+
+Sistem pendaftaran syarikat + undian projek sekolah. Stack: FastAPI + SQLite + React/Vite.
+
+## Peraturan edit
+
+- Perubahan kecil, fokus; jangan refactor tidak diminta
+- Gaya sedia ada: BM untuk UI, `backend/services.py` untuk logik perniagaan
+- Jangan commit: `undi.db`, `backups/`, `.env`, `ADMIN_PIN` sebenar
+- Masa: guna `malaysia_now()` / `format_datetime_myt()` — bukan UTC mentah dalam UI/CSV
+
+## Domain
+
+- **4 kaunter:** `/register/1` … `/register/4` (bukan satu `/daftar` untuk semua)
+- **Nombor undian:** sequential, tiada kuota 384; `format_draw_number` — 3 digit <1000, else integer
+- **Draw:** fasa `idle` → `project` → `winner`; `next_project` simpan ke `draw_results`
+- **Kemaskini:** `submit_winner` dibenarkan dalam fasa `winner`; selepas `next_project` tidak boleh ubah
+- **Port:** `start_server.bat` auto pilih port kosong; elak 8080 (Acer)
+
+## Data
+
+- Import: `scripts/import_data.py` (reset) atau `scripts/merge_extra_companies.py` (tambah sahaja)
+- CSV syarikat: `Data/senarai kontraktor G 1 (B24).csv`, `Data/contsrchrslt.csv`
+- Projek: Excel dalam `Data/`
+
+## Deploy tempatan
+
+- `start_server.bat` → build frontend + uvicorn
+- SPA: static dari `frontend/dist`, API di `/api/*`

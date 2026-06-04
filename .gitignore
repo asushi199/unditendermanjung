@@ -1,0 +1,14 @@
+node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+undi.db
+backups/
+.env
+server_port.txt
+ALAMAT_ACARA.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

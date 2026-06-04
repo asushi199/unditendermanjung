@@ -1,0 +1,23 @@
+---
+description: Konvensyen backend FastAPI & SQLite
+globs: backend/**/*.py,scripts/**/*.py
+alwaysApply: false
+---
+
+# Backend Python
+
+- Transaksi kritikal: `db_transaction(immediate=True)` untuk pendaftaran serentak
+- Selepas ubah state undian: panggil `schedule_broadcast()` untuk SSE
+- Ralat perniagaan: `raise ValueError(...)` — ditangkap di `main.py` sebagai HTTP 400
+- PIN: semak `ADMIN_PIN` dari `config.py` untuk padam/tambah syarikat
+- Jangan guna `MAX_REGISTRATIONS` tetap — kuota = bilangan syarikat; pendaftaran nombor tanpa had senarai
+
+## API utama
+
+- `POST /api/register` — body `{ company_id, counter_id }`
+- `POST /api/draw/reveal`, `/winner`, `/next`, `/waiting`
+- `GET /api/events/stream` — SSE state
+
+## Ujian
+
+Jalankan dengan server hidup: `scripts/test_concurrent_register.py`, `test_draw_flow.py`

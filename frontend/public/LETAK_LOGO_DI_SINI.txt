@@ -1,0 +1,11 @@
+Logo rasmi diletakkan dalam folder projek:
+
+  Logo/logo ppd.png
+
+Jalankan (atau guna start_server.bat yang auto-sync):
+
+  powershell -File scripts\sync_logo.ps1
+  cd frontend
+  npm run build
+
+Fail disalin ke ppd-logo.png untuk paparan web.

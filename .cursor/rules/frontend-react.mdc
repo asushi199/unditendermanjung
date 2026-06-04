@@ -1,0 +1,22 @@
+---
+description: Konvensyen frontend React & cetak
+globs: frontend/src/**/*
+alwaysApply: false
+---
+
+# Frontend React
+
+- API: `frontend/src/api.ts` — base path relatif (same origin)
+- Tajuk rasmi: `EventTitleBlock`, `eventConfig.ts` + `/api/event`
+- Header penuh lebar: `page-shell` + `page-full-header` + `PpdHeader`
+- Live state: `useLiveState()` / SSE untuk `/display` dan `/admin`
+
+## Laluan
+
+- Kaunter: `/register/:counterId`
+- Cetak: `/cetak/pendaftaran`, `/cetak/keputusan` — gaya `.print-report`, `@media print`
+- Jangan hardcode port; guna URL relatif
+
+## Build
+
+Selepas ubah frontend: `cd frontend && npm run build` (atau `start_server.bat`)
