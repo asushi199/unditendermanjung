@@ -3,11 +3,14 @@ import { Link } from "react-router-dom";
 import PpdHeader from "../components/PpdHeader";
 import {
   ProjectRow,
+  ReserveRow,
   fetchProjects,
+  fetchReserves,
   fetchStats,
   nextProject,
   resetRehearsal,
   revealProject,
+  revealReserve,
   showWaitingScreen,
   submitWinner,
   triggerBackup,
@@ -17,7 +20,9 @@ import {
 
 export default function AdminPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [reserves, setReserves] = useState<ReserveRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedReserveSlot, setSelectedReserveSlot] = useState<number | null>(null);
   const [drawInput, setDrawInput] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -32,12 +37,14 @@ export default function AdminPage() {
     fetchProjects().then((list) => {
       setProjects(list);
       setSelectedId((prev) => {
+        if (selectedReserveSlot !== null) return prev;
         if (prev && list.some((p) => p.id === prev)) return prev;
         return list.find((p) => !p.completed)?.id ?? list[0]?.id ?? null;
       });
     });
+    fetchReserves().then(setReserves);
     fetchStats().then(setStats);
-  }, []);
+  }, [selectedReserveSlot]);
 
   useEffect(() => {
     load();
@@ -46,23 +53,58 @@ export default function AdminPage() {
   }, [load]);
 
   const selected = projects.find((p) => p.id === selectedId);
+  const selectedReserve = reserves.find((r) => r.slot === selectedReserveSlot);
+  const isOnDisplayProject =
+    !!selected && liveState?.project?.id === selected.id;
+  const isOnDisplayReserve =
+    !!selectedReserve && liveState?.reserve?.slot === selectedReserve.slot;
   const isActiveProject =
-    !!selected && !selected.completed && liveState?.project?.id === selected.id;
-  const awaitingConfirm = isActiveProject && liveState?.phase === "winner";
+    isOnDisplayProject &&
+    !selected!.completed &&
+    (liveState?.phase === "project" || liveState?.phase === "winner");
+  const isActiveReserve =
+    isOnDisplayReserve &&
+    !selectedReserve!.completed &&
+    (liveState?.phase === "project" || liveState?.phase === "winner");
+  const isActiveDraw = isActiveProject || isActiveReserve;
+  const awaitingConfirm = isActiveDraw && liveState?.phase === "winner";
+  const inReserveMode = selectedReserveSlot !== null;
 
   async function selectAndProject(p: ProjectRow) {
+    setSelectedReserveSlot(null);
     setSelectedId(p.id);
     setDrawInput("");
     setError("");
     setRevising(false);
-    if (p.completed) {
-      setMessage("Projek ini telah selesai.");
-      return;
-    }
     setBusy(true);
     try {
       await revealProject(p.id);
-      setMessage(`Projek #${p.bil} ditayar ke skrin.`);
+      setMessage(
+        p.completed
+          ? `Projek #${p.bil} ditayar semula (keputusan).`
+          : `Projek #${p.bil} ditayar ke skrin.`
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ralat");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function selectAndReserve(r: ReserveRow) {
+    setSelectedId(null);
+    setSelectedReserveSlot(r.slot);
+    setDrawInput("");
+    setError("");
+    setRevising(false);
+    setBusy(true);
+    try {
+      await revealReserve(r.slot);
+      setMessage(
+        r.completed
+          ? `${r.label} ditayar semula (keputusan).`
+          : `${r.label} ditayar ke skrin.`
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ralat");
     } finally {
@@ -109,20 +151,46 @@ export default function AdminPage() {
   }, [drawInput, liveState?.phase, revising]);
 
   async function handleNext() {
+    const wasReserve = inReserveMode;
     setBusy(true);
     setError("");
     try {
       await nextProject();
       const list = await fetchProjects();
+      const reserveList = await fetchReserves();
       setProjects(list);
-      const nxt = list.find((p) => !p.completed);
+      setReserves(reserveList);
       setDrawInput("");
-      if (nxt) {
-        setSelectedId(nxt.id);
-        await revealProject(nxt.id);
-        setMessage(`Projek #${nxt.bil} ditayar. Masukkan nombor undian.`);
+      if (wasReserve) {
+        const nxt = reserveList.find((r) => !r.completed);
+        if (nxt) {
+          setSelectedReserveSlot(nxt.slot);
+          setSelectedId(null);
+          await revealReserve(nxt.slot);
+          setMessage(`${nxt.label} ditayar. Masukkan nombor undian.`);
+        } else {
+          setMessage("Semua simpanan selesai.");
+        }
       } else {
-        setMessage("Semua projek selesai.");
+        const nxt = list.find((p) => !p.completed);
+        if (nxt) {
+          setSelectedId(nxt.id);
+          setSelectedReserveSlot(null);
+          await revealProject(nxt.id);
+          setMessage(`Projek #${nxt.bil} ditayar. Masukkan nombor undian.`);
+        } else {
+          const firstReserve = reserveList.find((r) => !r.completed);
+          if (firstReserve) {
+            setSelectedReserveSlot(firstReserve.slot);
+            setSelectedId(null);
+            await revealReserve(firstReserve.slot);
+            setMessage(
+              `Semua projek selesai. ${firstReserve.label} ditayar — mula undian simpanan.`
+            );
+          } else {
+            setMessage("Semua projek selesai.");
+          }
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ralat");
@@ -137,7 +205,11 @@ export default function AdminPage() {
     setError("");
     try {
       await showWaitingScreen();
-      setMessage("Skrin paparan: menunggu.");
+      const s = await fetchStats();
+      const allDone =
+        s.projects_completed === s.total_projects &&
+        s.reserves_completed === s.total_reserves;
+      setMessage(allDone ? "Skrin paparan: undian tamat." : "Skrin paparan: menunggu.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ralat");
     } finally {
@@ -160,6 +232,12 @@ export default function AdminPage() {
         <span>
           Projek <b>{stats.projects_completed as number}</b>/{stats.total_projects as number}
         </span>
+        <span>
+          Simpanan <b>{stats.reserves_completed as number}</b>/{stats.total_reserves as number}
+        </span>
+        {liveState?.event_complete && (
+          <span className="admin-v2-bar-done">Undian tamat</span>
+        )}
         <span>
           Skrin: <b>{liveState?.phase ?? "idle"}</b>
         </span>
@@ -202,10 +280,119 @@ export default function AdminPage() {
               </li>
             ))}
           </ul>
+          <h3 className="admin-v2-list-reserve-h">Syarikat Simpanan — klik untuk tayar</h3>
+          <ul>
+            {reserves.map((r) => (
+              <li key={r.slot}>
+                <button
+                  type="button"
+                  className={`admin-v2-proj reserve ${selectedReserveSlot === r.slot ? "on" : ""} ${r.completed ? "done" : ""}`}
+                  onClick={() => selectAndReserve(r)}
+                  disabled={busy}
+                >
+                  <span className="n">#{r.slot}</span>
+                  <span className="s">{r.label}</span>
+                  {r.completed && (
+                    <span className="r">
+                      {r.result_number} {r.result_company}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
         </aside>
 
         <main className="admin-v2-work">
-          {selected ? (
+          {selectedReserve ? (
+            <>
+              <div className="admin-v2-proj-info">
+                <h2>{selectedReserve.label}</h2>
+              </div>
+
+              {selectedReserve.completed ? (
+                <div className="admin-v2-completed">
+                  <p className="lbl">Keputusan (disahkan)</p>
+                  <p className="num">{selectedReserve.result_number}</p>
+                  <p className="co">{selectedReserve.result_company}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="admin-v2-draw">
+                    <label htmlFor="dn">Nombor undian (auto papar bila lengkap)</label>
+                    <input
+                      id="dn"
+                      className="admin-v2-num"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="001"
+                      value={drawInput}
+                      autoFocus
+                      disabled={
+                        busy ||
+                        !isActiveReserve ||
+                        (liveState?.phase === "winner" && !revising) ||
+                        (liveState?.phase !== "project" && liveState?.phase !== "winner")
+                      }
+                      onChange={(e) => setDrawInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    />
+                    {awaitingConfirm && !revising && liveState?.winning_company && (
+                      <p className="admin-v2-winner-name">{liveState.winning_company.name}</p>
+                    )}
+                    {awaitingConfirm && !revising && (
+                      <p className="admin-v2-done-hint">
+                        Keputusan dipapar. Tekan «Kemaskini» jika silap, atau «Simpanan Seterusnya».
+                      </p>
+                    )}
+                    {revising && (
+                      <p className="admin-v2-revise-hint">Masukkan nombor betul (3 digit, auto papar).</p>
+                    )}
+                  </div>
+
+                  {awaitingConfirm && (
+                    <div className="admin-v2-actions">
+                      {!revising && (
+                        <button
+                          type="button"
+                          className="btn secondary large"
+                          onClick={() => {
+                            setRevising(true);
+                            setDrawInput("");
+                            setError("");
+                            setMessage("");
+                          }}
+                          disabled={busy}
+                        >
+                          Kemaskini
+                        </button>
+                      )}
+                      {revising && (
+                        <button
+                          type="button"
+                          className="btn secondary large"
+                          onClick={() => {
+                            setRevising(false);
+                            setDrawInput(liveState?.winning_draw_number ?? "");
+                            setError("");
+                          }}
+                          disabled={busy}
+                        >
+                          Batal
+                        </button>
+                      )}
+                      <button
+                        className="btn primary large admin-v2-next"
+                        onClick={handleNext}
+                        disabled={busy || revising}
+                      >
+                        Simpanan Seterusnya → tayar simpanan seterusnya
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          ) : selected ? (
             <>
               <div className="admin-v2-proj-info">
                 <h2>
@@ -241,10 +428,10 @@ export default function AdminPage() {
                   }
                   onChange={(e) => setDrawInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 />
-                {awaitingConfirm && !revising && liveState?.winning_company && (
+                {isActiveProject && awaitingConfirm && !revising && liveState?.winning_company && (
                   <p className="admin-v2-winner-name">{liveState.winning_company.name}</p>
                 )}
-                {awaitingConfirm && !revising && (
+                {isActiveProject && awaitingConfirm && !revising && (
                   <p className="admin-v2-done-hint">
                     Keputusan dipapar. Tekan «Kemaskini» jika silap, atau «Projek Seterusnya».
                   </p>
@@ -254,7 +441,7 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {awaitingConfirm && (
+              {isActiveProject && awaitingConfirm && (
               <div className="admin-v2-actions">
                 {!revising && (
                   <button
@@ -298,7 +485,7 @@ export default function AdminPage() {
               )}
             </>
           ) : (
-            <p className="admin-v2-empty">Pilih projek di kiri.</p>
+            <p className="admin-v2-empty">Pilih projek atau simpanan di kiri.</p>
           )}
 
           <details className="admin-v2-tools">

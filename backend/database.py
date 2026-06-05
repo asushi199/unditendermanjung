@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS settings (
 INSERT OR IGNORE INTO number_sequence (id, next_value) VALUES (1, 1);
 INSERT OR IGNORE INTO draw_session (id, phase) VALUES (1, 'idle');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('rehearsal_mode', '0');
+
+CREATE TABLE IF NOT EXISTS reserve_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slot INTEGER NOT NULL UNIQUE,
+    draw_number INTEGER NOT NULL,
+    company_id INTEGER NOT NULL REFERENCES companies(id),
+    completed_at TEXT NOT NULL
+);
 """
 
 
@@ -114,10 +122,17 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
+def _migrate_schema(conn: sqlite3.Connection) -> None:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(draw_session)").fetchall()}
+    if "current_reserve_slot" not in cols:
+        conn.execute("ALTER TABLE draw_session ADD COLUMN current_reserve_slot INTEGER")
+
+
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _migrate_schema(conn)
         conn.commit()
 
 

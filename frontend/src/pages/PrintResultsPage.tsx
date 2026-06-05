@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { fetchProjects, ProjectRow } from "../api";
+import { fetchProjects, fetchReserves, ProjectRow, ReserveRow } from "../api";
 
 export default function PrintResultsPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [reserves, setReserves] = useState<ReserveRow[]>([]);
   const [searchParams] = useSearchParams();
   const autoPrint = searchParams.get("cetak") === "1";
 
   useEffect(() => {
     document.body.classList.add("print-landscape");
     fetchProjects().then(setProjects);
+    fetchReserves().then(setReserves);
     return () => document.body.classList.remove("print-landscape");
   }, []);
 
@@ -21,6 +23,7 @@ export default function PrintResultsPage() {
   }, [autoPrint, projects]);
 
   const done = projects.filter((p) => p.completed);
+  const reservesDone = reserves.filter((r) => r.completed);
 
   return (
     <div className="print-report print-report--results">
@@ -75,6 +78,37 @@ export default function PrintResultsPage() {
         </tbody>
       </table>
       {done.length === 0 && <p className="print-empty">Tiada keputusan direkodkan lagi.</p>}
+
+      {reservesDone.length > 0 && (
+        <>
+          <header className="print-header print-header--sub">
+            <h2>Syarikat Simpanan</h2>
+            <p className="print-meta">
+              Selesai: <strong>{reservesDone.length}</strong> / {reserves.length}
+            </p>
+          </header>
+          <table className="print-table print-table--results">
+            <thead>
+              <tr>
+                <th className="col-bil">Simpanan</th>
+                <th className="col-school">Label</th>
+                <th className="col-num">Nombor</th>
+                <th className="col-co">Syarikat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reservesDone.map((r) => (
+                <tr key={r.slot}>
+                  <td className="col-bil">{r.slot}</td>
+                  <td className="col-school print-cell-wrap">{r.label}</td>
+                  <td className="col-num num">{r.result_number}</td>
+                  <td className="col-co print-cell-wrap">{r.result_company ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }

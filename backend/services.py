@@ -8,6 +8,7 @@ from typing import AsyncGenerator
 from config import (
     ADMIN_PIN,
     RESET_REHEARSAL_PASSWORD,
+    RESERVE_SLOTS,
     BACKUPS_DIR,
     DB_PATH,
     EVENT_HEADLINE,
@@ -52,10 +53,33 @@ def get_event_meta() -> dict:
     }
 
 
+def reserve_label(slot: int) -> str:
+    return f"Syarikat Simpanan {slot}"
+
+
+def _all_projects_completed(conn) -> bool:
+    total = conn.execute("SELECT COUNT(*) AS c FROM projects").fetchone()["c"]
+    done = conn.execute("SELECT COUNT(*) AS c FROM draw_results").fetchone()["c"]
+    return total > 0 and done >= total
+
+
+def _all_draws_completed(conn) -> bool:
+    if not _all_projects_completed(conn):
+        return False
+    n_reserves = conn.execute("SELECT COUNT(*) AS c FROM reserve_results").fetchone()[0]
+    return n_reserves >= RESERVE_SLOTS
+
+
 def _session_snapshot(conn) -> dict:
     row = conn.execute("SELECT * FROM draw_session WHERE id = 1").fetchone()
     project = None
+    reserve = None
     company = None
+    if row["current_reserve_slot"]:
+        reserve = {
+            "slot": row["current_reserve_slot"],
+            "label": reserve_label(row["current_reserve_slot"]),
+        }
     if row["current_project_id"]:
         p = conn.execute(
             "SELECT * FROM projects WHERE id = ?", (row["current_project_id"],)
@@ -75,9 +99,17 @@ def _session_snapshot(conn) -> dict:
         ).fetchone()
         if c:
             company = {"id": c["id"], "name": c["name"]}
+    event_complete = (
+        _all_draws_completed(conn)
+        and row["phase"] == "idle"
+        and not row["current_project_id"]
+        and not row["current_reserve_slot"]
+    )
     return {
         "phase": row["phase"],
         "project": project,
+        "reserve": reserve,
+        "event_complete": event_complete,
         "winning_draw_number": (
             format_draw_number(row["winning_draw_number"])
             if row["winning_draw_number"]
@@ -403,7 +435,7 @@ def show_waiting_screen() -> dict:
     with db_transaction() as conn:
         conn.execute(
             """UPDATE draw_session SET
-               current_project_id = NULL, phase = 'idle',
+               current_project_id = NULL, current_reserve_slot = NULL, phase = 'idle',
                winning_draw_number = NULL, winning_company_id = NULL
                WHERE id = 1"""
         )
@@ -420,19 +452,31 @@ def reveal_project(project_id: int) -> dict:
         if not project:
             raise ValueError("Projek tidak dijumpai.")
         done = conn.execute(
-            "SELECT id FROM draw_results WHERE project_id = ?", (project_id,)
+            "SELECT draw_number, company_id FROM draw_results WHERE project_id = ?",
+            (project_id,),
         ).fetchone()
         if done:
-            raise ValueError("Projek ini telah selesai diundi.")
-
-        conn.execute(
-            """UPDATE draw_session SET
-               current_project_id = ?, phase = 'project',
-               winning_draw_number = NULL, winning_company_id = NULL
-               WHERE id = 1""",
-            (project_id,),
-        )
-        log_audit(conn, "reveal_project", f"project_id={project_id} bil={project['bil']}")
+            conn.execute(
+                """UPDATE draw_session SET
+                   current_project_id = ?, current_reserve_slot = NULL, phase = 'winner',
+                   winning_draw_number = ?, winning_company_id = ?
+                   WHERE id = 1""",
+                (project_id, done["draw_number"], done["company_id"]),
+            )
+            log_audit(
+                conn,
+                "replay_project",
+                f"project_id={project_id} bil={project['bil']}",
+            )
+        else:
+            conn.execute(
+                """UPDATE draw_session SET
+                   current_project_id = ?, current_reserve_slot = NULL, phase = 'project',
+                   winning_draw_number = NULL, winning_company_id = NULL
+                   WHERE id = 1""",
+                (project_id,),
+            )
+            log_audit(conn, "reveal_project", f"project_id={project_id} bil={project['bil']}")
     schedule_broadcast()
     return get_public_state()
 
@@ -445,9 +489,9 @@ def submit_winner(draw_number_str: str) -> dict:
     with db_transaction(immediate=True) as conn:
         session = conn.execute("SELECT * FROM draw_session WHERE id = 1").fetchone()
         if session["phase"] not in ("project", "winner"):
-            raise ValueError("Sila tayangkan projek terlebih dahulu.")
-        if not session["current_project_id"]:
-            raise ValueError("Tiada projek aktif.")
+            raise ValueError("Sila tayangkan projek atau simpanan terlebih dahulu.")
+        if not session["current_project_id"] and not session["current_reserve_slot"]:
+            raise ValueError("Tiada projek atau simpanan aktif.")
 
         reg = conn.execute(
             """SELECT r.draw_number, r.company_id, c.name
@@ -471,11 +515,50 @@ def submit_winner(draw_number_str: str) -> dict:
                WHERE id = 1""",
             (draw_num, reg["company_id"]),
         )
+        target = (
+            f"reserve_slot={session['current_reserve_slot']}"
+            if session["current_reserve_slot"]
+            else f"project_id={session['current_project_id']}"
+        )
         log_audit(
             conn,
             "winner_revised" if revising else "winner",
-            f"project_id={session['current_project_id']} number={draw_num} company={reg['name']}",
+            f"{target} number={draw_num} company={reg['name']}",
         )
+    schedule_broadcast()
+    return get_public_state()
+
+
+def reveal_reserve(slot: int) -> dict:
+    if slot < 1 or slot > RESERVE_SLOTS:
+        raise ValueError(f"Simpanan mesti antara 1 dan {RESERVE_SLOTS}.")
+    with db_transaction() as conn:
+        done = conn.execute(
+            "SELECT draw_number, company_id FROM reserve_results WHERE slot = ?",
+            (slot,),
+        ).fetchone()
+        if done:
+            conn.execute(
+                """UPDATE draw_session SET
+                   current_project_id = NULL, current_reserve_slot = ?, phase = 'winner',
+                   winning_draw_number = ?, winning_company_id = ?
+                   WHERE id = 1""",
+                (slot, done["draw_number"], done["company_id"]),
+            )
+            log_audit(conn, "replay_reserve", f"slot={slot}")
+        else:
+            if not _all_projects_completed(conn):
+                raise ValueError(
+                    "Selesaikan semua projek terlebih dahulu sebelum undian simpanan."
+                )
+            conn.execute(
+                """UPDATE draw_session SET
+                   current_project_id = NULL, current_reserve_slot = ?, phase = 'project',
+                   winning_draw_number = NULL, winning_company_id = NULL
+                   WHERE id = 1""",
+                (slot,),
+            )
+            log_audit(conn, "reveal_reserve", f"slot={slot}")
     schedule_broadcast()
     return get_public_state()
 
@@ -485,32 +568,80 @@ def next_project() -> dict:
         session = conn.execute("SELECT * FROM draw_session WHERE id = 1").fetchone()
         if session["phase"] != "winner":
             raise ValueError("Sila masukkan nombor pemenang terlebih dahulu.")
-        if not session["current_project_id"] or not session["winning_draw_number"]:
+        if not session["winning_draw_number"]:
             raise ValueError("Sesi tidak lengkap.")
 
-        conn.execute(
-            """INSERT INTO draw_results (project_id, draw_number, company_id, completed_at)
-               VALUES (?, ?, ?, ?)""",
-            (
-                session["current_project_id"],
-                session["winning_draw_number"],
-                session["winning_company_id"],
-                malaysia_now(),
-            ),
-        )
-        conn.execute(
-            """UPDATE draw_session SET
-               current_project_id = NULL, phase = 'idle',
-               winning_draw_number = NULL, winning_company_id = NULL
-               WHERE id = 1"""
-        )
-        log_audit(
-            conn,
-            "next_project",
-            f"saved project_id={session['current_project_id']}",
-        )
+        if session["current_reserve_slot"]:
+            conn.execute(
+                """INSERT INTO reserve_results (slot, draw_number, company_id, completed_at)
+                   VALUES (?, ?, ?, ?)""",
+                (
+                    session["current_reserve_slot"],
+                    session["winning_draw_number"],
+                    session["winning_company_id"],
+                    malaysia_now(),
+                ),
+            )
+            saved = session["current_reserve_slot"]
+            conn.execute(
+                """UPDATE draw_session SET
+                   current_reserve_slot = NULL, phase = 'idle',
+                   winning_draw_number = NULL, winning_company_id = NULL
+                   WHERE id = 1"""
+            )
+            log_audit(conn, "next_reserve", f"saved slot={saved}")
+        elif session["current_project_id"]:
+            conn.execute(
+                """INSERT INTO draw_results (project_id, draw_number, company_id, completed_at)
+                   VALUES (?, ?, ?, ?)""",
+                (
+                    session["current_project_id"],
+                    session["winning_draw_number"],
+                    session["winning_company_id"],
+                    malaysia_now(),
+                ),
+            )
+            saved = session["current_project_id"]
+            conn.execute(
+                """UPDATE draw_session SET
+                   current_project_id = NULL, phase = 'idle',
+                   winning_draw_number = NULL, winning_company_id = NULL
+                   WHERE id = 1"""
+            )
+            log_audit(conn, "next_project", f"saved project_id={saved}")
+        else:
+            raise ValueError("Sesi tidak lengkap.")
     schedule_broadcast()
     return get_public_state()
+
+
+def list_reserves() -> list[dict]:
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT r.slot, r.draw_number, c.name AS result_company, r.completed_at
+               FROM reserve_results r
+               JOIN companies c ON c.id = r.company_id
+               ORDER BY r.slot"""
+        ).fetchall()
+        by_slot = {r["slot"]: r for r in rows}
+        out = []
+        for slot in range(1, RESERVE_SLOTS + 1):
+            row = by_slot.get(slot)
+            out.append(
+                {
+                    "slot": slot,
+                    "label": reserve_label(slot),
+                    "completed": row is not None,
+                    "result_number": (
+                        format_draw_number(row["draw_number"]) if row else None
+                    ),
+                    "result_company": row["result_company"] if row else None,
+                }
+            )
+        return out
+    finally:
+        conn.close()
 
 
 def list_projects() -> list[dict]:
@@ -578,6 +709,7 @@ def stats() -> dict:
             "SELECT next_value FROM number_sequence WHERE id = 1"
         ).fetchone()["next_value"]
         n_projects_done = conn.execute("SELECT COUNT(*) FROM draw_results").fetchone()[0]
+        n_reserves_done = conn.execute("SELECT COUNT(*) FROM reserve_results").fetchone()[0]
         n_companies = conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
         n_projects = conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0]
         return {
@@ -585,6 +717,8 @@ def stats() -> dict:
             "next_number": format_draw_number(next_val),
             "projects_completed": n_projects_done,
             "total_projects": n_projects,
+            "reserves_completed": n_reserves_done,
+            "total_reserves": RESERVE_SLOTS,
             "total_companies": n_companies,
             "unlimited_numbers": True,
         }
@@ -598,11 +732,12 @@ def reset_rehearsal(password: str) -> None:
     with db_transaction() as conn:
         conn.execute(
             """UPDATE draw_session SET
-               current_project_id = NULL, phase = 'idle',
+               current_project_id = NULL, current_reserve_slot = NULL, phase = 'idle',
                winning_draw_number = NULL, winning_company_id = NULL
                WHERE id = 1"""
         )
         conn.execute("DELETE FROM draw_results")
+        conn.execute("DELETE FROM reserve_results")
         conn.execute("DELETE FROM registrations")
         conn.execute("DELETE FROM audit_log")
         conn.execute("UPDATE number_sequence SET next_value = 1 WHERE id = 1")

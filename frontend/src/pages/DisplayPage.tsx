@@ -21,9 +21,28 @@ export default function DisplayPage() {
     );
   }
 
-  const { phase, project, winning_draw_number, winning_company, event } = state;
+  const { phase, project, reserve, winning_draw_number, winning_company, event, event_complete } =
+    state;
 
-  if (phase === "idle" || !project) {
+  if (event_complete && phase === "idle") {
+    return (
+      <div className="display-screen display-complete">
+        <DisplayBranding event={event} />
+        <main className="display-main">
+          <section className="display-card display-card-complete">
+            <div className="display-complete-icon" aria-hidden="true">
+              ✓
+            </div>
+            <p className="display-complete-label">Undian Selesai</p>
+            <h2 className="display-complete-title">Terima Kasih</h2>
+            <p className="display-complete-msg">Sekian, terima kasih.</p>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  if (phase === "idle" || (!project && !reserve)) {
     return (
       <div className="display-screen display-idle">
         <DisplayBranding event={event} />
@@ -47,10 +66,19 @@ export default function DisplayPage() {
       <DisplayBranding event={event} />
       <main className="display-main">
         <section className="display-card display-card-project">
-          <p className="display-bil">Projek #{project.bil}</p>
-          <p className="display-school">{project.school}</p>
-          <p className="display-amount">{project.amount_display}</p>
-          <h2 className="display-title">{project.title}</h2>
+          {reserve ? (
+            <>
+              <p className="display-bil">Simpanan #{reserve.slot}</p>
+              <p className="display-school">{reserve.label}</p>
+            </>
+          ) : project ? (
+            <>
+              <p className="display-bil">Projek #{project.bil}</p>
+              <p className="display-school">{project.school}</p>
+              <p className="display-amount">{project.amount_display}</p>
+              <h2 className="display-title">{project.title}</h2>
+            </>
+          ) : null}
         </section>
 
         {phase === "project" && (

@@ -23,7 +23,9 @@ from services import (
     inspect_projects,
     list_projects,
     list_registrations,
+    list_reserves,
     next_project,
+    reveal_reserve,
     delete_registration,
     register_company,
     reset_rehearsal,
@@ -81,6 +83,10 @@ class ResetRehearsalBody(BaseModel):
 
 class RevealBody(BaseModel):
     project_id: int
+
+
+class RevealReserveBody(BaseModel):
+    slot: int = Field(ge=1, le=15)
 
 
 class WinnerBody(BaseModel):
@@ -179,6 +185,19 @@ def api_projects():
     return list_projects()
 
 
+@app.get("/api/reserves")
+def api_reserves():
+    return list_reserves()
+
+
+@app.post("/api/draw/reveal-reserve")
+def api_reveal_reserve(body: RevealReserveBody):
+    try:
+        return reveal_reserve(body.slot)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+
+
 @app.post("/api/draw/reveal")
 def api_reveal(body: RevealBody):
     try:
@@ -230,6 +249,12 @@ def export_draw_results():
                JOIN companies c ON c.id = d.company_id
                ORDER BY p.bil"""
         ).fetchall()
+        reserves = conn.execute(
+            """SELECT r.slot, r.draw_number, c.name, r.completed_at
+               FROM reserve_results r
+               JOIN companies c ON c.id = r.company_id
+               ORDER BY r.slot"""
+        ).fetchall()
     finally:
         conn.close()
     buf = io.StringIO()
@@ -246,6 +271,21 @@ def export_draw_results():
                 format_datetime_myt(r["completed_at"]),
             ]
         )
+    if reserves:
+        w.writerow([])
+        w.writerow(["SIMPANAN", "", "", "", "", ""])
+        w.writerow(["Slot", "Label", "", "Nombor", "Syarikat", "Tarikh & Masa (MYT)"])
+        for r in reserves:
+            w.writerow(
+                [
+                    r["slot"],
+                    f"Syarikat Simpanan {r['slot']}",
+                    "",
+                    format_draw_number(r["draw_number"]),
+                    r["name"],
+                    format_datetime_myt(r["completed_at"]),
+                ]
+            )
     buf.seek(0)
     return StreamingResponse(
         iter([buf.getvalue()]),

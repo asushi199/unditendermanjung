@@ -135,11 +135,12 @@ def import_projects(conn) -> list[str]:
 def reset_registration_state(conn):
     conn.execute(
         """UPDATE draw_session SET
-           current_project_id = NULL, phase = 'idle',
+           current_project_id = NULL, current_reserve_slot = NULL, phase = 'idle',
            winning_draw_number = NULL, winning_company_id = NULL
            WHERE id = 1"""
     )
     conn.execute("DELETE FROM draw_results")
+    conn.execute("DELETE FROM reserve_results")
     conn.execute("DELETE FROM registrations")
     conn.execute("DELETE FROM audit_log")
     conn.execute("UPDATE number_sequence SET next_value = 1 WHERE id = 1")

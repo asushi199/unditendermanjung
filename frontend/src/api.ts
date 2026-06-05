@@ -11,6 +11,7 @@ export interface EventMeta {
 
 export interface PublicState {
   phase: "idle" | "project" | "winner";
+  event_complete?: boolean;
   event?: EventMeta;
   project: {
     id: number;
@@ -20,6 +21,7 @@ export interface PublicState {
     title: string;
     amount_display: string;
   } | null;
+  reserve?: { slot: number; label: string } | null;
   winning_draw_number: string | null;
   winning_company: { id: number; name: string } | null;
   registration_count?: number;
@@ -55,6 +57,14 @@ export interface ProjectRow {
   school: string;
   title: string;
   amount_display: string;
+  completed: boolean;
+  result_number: string | null;
+  result_company: string | null;
+}
+
+export interface ReserveRow {
+  slot: number;
+  label: string;
   completed: boolean;
   result_number: string | null;
   result_company: string | null;
@@ -142,6 +152,22 @@ export async function registerCompany(companyId: number, counterId: number) {
 export async function fetchProjects(): Promise<ProjectRow[]> {
   const r = await fetch(`${API}/api/projects`);
   return r.json();
+}
+
+export async function fetchReserves(): Promise<ReserveRow[]> {
+  const r = await fetch(`${API}/api/reserves`);
+  return r.json();
+}
+
+export async function revealReserve(slot: number) {
+  const r = await fetch(`${API}/api/draw/reveal-reserve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slot }),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.detail || "Ralat");
+  return data;
 }
 
 export async function revealProject(projectId: number) {
