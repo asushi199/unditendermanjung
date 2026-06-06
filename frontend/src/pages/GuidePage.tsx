@@ -29,7 +29,7 @@ export default function GuidePage() {
             "Taip nama syarikat (min. 2 huruf) dalam kotak carian.",
             "Klik nama syarikat yang betul dalam senarai.",
             "Tekan butang hijau « Daftar & Dapatkan Nombor ».",
-            "Tunjuk nombor besar (contoh 042) kepada syarikat — mereka TIDAK boleh daftar lagi.",
+            "Tunjuk nombor besar (contoh 42) kepada syarikat — mereka TIDAK boleh daftar lagi.",
             "Tekan « Daftar Seterusnya » untuk syarikat berikutnya.",
           ]}
         />
@@ -47,8 +47,8 @@ export default function GuidePage() {
             "Masukkan PIN (diberi oleh ketua urusetia).",
             "Klik projek dalam senarai kiri (ikut nombor bil).",
             "Tekan « Tayar ke Skrin » — skrin awam tunjuk sekolah & peruntukan SAHAJA.",
-            "Selepas undian fizikal di atas pentas, taip nombor 3 digit (contoh 042).",
-            "Tekan « Umumkan Pemenang » dan SAHKAN dalam pop-up.",
+            "Selepas undian fizikal di atas pentas, taip nombor undian (contoh 19).",
+            "Tekan Enter atau butang « Papar » — keputusan terus ke skrin (tiada pop-up).",
             "Tekan « Projek Seterusnya » sebelum projek seterusnya.",
           ]}
         />

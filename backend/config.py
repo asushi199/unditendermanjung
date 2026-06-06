@@ -15,7 +15,7 @@ CSV_EXTRA_COMPANIES = DATA_DIR / "contsrchrslt.csv"
 XLSX_PROJECTS = DATA_DIR / "PERUNTUKAN PENYELENGGARAAN SEKOLAH ATAS 50 TAHUN.xlsx"
 
 # Bilangan asal dari import CSV; kuota sebenar = bilangan syarikat dalam DB
-EXPECTED_REGISTRATIONS = 384
+EXPECTED_REGISTRATIONS = 719
 ADMIN_PIN = "1234"  # Change before event day
 RESET_REHEARSAL_PASSWORD = "manjunghebat"
 RESERVE_SLOTS = 15  # Syarikat Simpanan 1..15 selepas semua projek selesai

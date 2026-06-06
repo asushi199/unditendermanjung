@@ -1407,17 +1407,33 @@ body.display-mode {
   margin-bottom: 0.35rem;
 }
 
+.admin-v2-draw-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 340px;
+}
+
 .admin-v2-num {
-  width: 100%;
-  max-width: 280px;
+  flex: 1;
+  min-width: 0;
   font-size: 4rem;
   font-weight: 800;
   text-align: center;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.08em;
   padding: 0.5rem;
   border: 3px solid var(--primary);
   border-radius: 10px;
   color: var(--primary-dark);
+}
+
+.admin-v2-draw-submit {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .admin-v2-done-hint {

@@ -69,6 +69,128 @@ export default function AdminPage() {
   const isActiveDraw = isActiveProject || isActiveReserve;
   const awaitingConfirm = isActiveDraw && liveState?.phase === "winner";
   const inReserveMode = selectedReserveSlot !== null;
+  const maxDrawN = (stats.registration_count as number) || 0;
+  const maxDrawLen = maxDrawN > 0 ? String(maxDrawN).length : 3;
+
+  function parseDrawValue(raw: string): number | null {
+    const digits = raw.replace(/\D/g, "");
+    if (!digits) return null;
+    const n = parseInt(digits, 10);
+    if (Number.isNaN(n) || n < 1) return null;
+    return n;
+  }
+
+  function canSubmitDraw(): boolean {
+    const n = parseDrawValue(drawInput);
+    if (n == null) return false;
+    if (maxDrawN > 0 && n > maxDrawN) return false;
+    return true;
+  }
+
+  function drawInputDisabled(isActive: boolean): boolean {
+    return (
+      busy ||
+      !isActive ||
+      (liveState?.phase === "winner" && !revising) ||
+      (liveState?.phase !== "project" && liveState?.phase !== "winner")
+    );
+  }
+
+  function showDrawSubmit(isActive: boolean): boolean {
+    return (
+      isActive &&
+      (liveState?.phase === "project" ||
+        (liveState?.phase === "winner" && revising))
+    );
+  }
+
+  async function submitDraw() {
+    if (submittingRef.current) return;
+    const n = parseDrawValue(drawInput);
+    if (n == null) {
+      setError("Nombor undian tidak sah.");
+      return;
+    }
+    if (maxDrawN > 0 && n > maxDrawN) {
+      setError(`Nombor mesti antara 1 dan ${maxDrawN}.`);
+      return;
+    }
+    const canPhase =
+      liveState?.phase === "project" ||
+      (liveState?.phase === "winner" && revising);
+    if (!canPhase) return;
+
+    submittingRef.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await submitWinner(String(n));
+      setRevising(false);
+      setMessage(`Keputusan ${n} dipaparkan.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ralat");
+    } finally {
+      setBusy(false);
+      submittingRef.current = false;
+    }
+  }
+
+  function handleDrawKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    void submitDraw();
+  }
+
+  function renderDrawEntry(isActive: boolean) {
+    const rangeHint =
+      maxDrawN > 0 ? `(1–${maxDrawN}, Enter atau Papar)` : "(Enter atau Papar)";
+    return (
+      <div className="admin-v2-draw">
+        <label htmlFor="dn">Nombor undian {rangeHint}</label>
+        <div className="admin-v2-draw-row">
+          <input
+            id="dn"
+            className="admin-v2-num"
+            inputMode="numeric"
+            maxLength={maxDrawLen}
+            placeholder="1"
+            value={drawInput}
+            autoFocus
+            disabled={drawInputDisabled(isActive)}
+            onChange={(e) => {
+              setDrawInput(e.target.value.replace(/\D/g, "").slice(0, maxDrawLen));
+              setError("");
+            }}
+            onKeyDown={handleDrawKeyDown}
+          />
+          {showDrawSubmit(isActive) && (
+            <button
+              type="button"
+              className="btn primary admin-v2-draw-submit"
+              onClick={() => void submitDraw()}
+              disabled={busy || !canSubmitDraw()}
+            >
+              Papar
+            </button>
+          )}
+        </div>
+        {awaitingConfirm && !revising && liveState?.winning_company && (
+          <p className="admin-v2-winner-name">{liveState.winning_company.name}</p>
+        )}
+        {awaitingConfirm && !revising && (
+          <p className="admin-v2-done-hint">
+            Keputusan dipapar. Tekan «Kemaskini» jika silap
+            {inReserveMode ? ", atau «Simpanan Seterusnya»." : ", atau «Projek Seterusnya»."}
+          </p>
+        )}
+        {revising && (
+          <p className="admin-v2-revise-hint">
+            Masukkan nombor betul, kemudian Enter atau «Papar».
+          </p>
+        )}
+      </div>
+    );
+  }
 
   async function selectAndProject(p: ProjectRow) {
     setSelectedReserveSlot(null);
@@ -112,43 +234,11 @@ export default function AdminPage() {
     }
   }
 
-  async function submitNumber(num: string) {
-    if (num.length !== 3 || submittingRef.current) return;
-    submittingRef.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      await submitWinner(num);
-      setRevising(false);
-      setMessage(`Keputusan ${num.padStart(3, "0")} dipaparkan.`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Ralat");
-      setDrawInput("");
-    } finally {
-      setBusy(false);
-      submittingRef.current = false;
-    }
-  }
-
   useEffect(() => {
     if (liveState?.phase !== "winner") {
       setRevising(false);
     }
   }, [liveState?.phase]);
-
-  useEffect(() => {
-    const digits = drawInput.replace(/\D/g, "");
-    if (!digits) return;
-    const n = parseInt(digits, 10);
-    if (n < 1) return;
-    if (n < 1000 && digits.length < 3) return;
-    const formatted = n < 1000 ? digits.padStart(3, "0") : String(n);
-    if (liveState?.phase === "project") {
-      submitNumber(formatted);
-    } else if (liveState?.phase === "winner" && revising) {
-      submitNumber(formatted);
-    }
-  }, [drawInput, liveState?.phase, revising]);
 
   async function handleNext() {
     const wasReserve = inReserveMode;
@@ -318,36 +408,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <>
-                  <div className="admin-v2-draw">
-                    <label htmlFor="dn">Nombor undian (auto papar bila lengkap)</label>
-                    <input
-                      id="dn"
-                      className="admin-v2-num"
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="001"
-                      value={drawInput}
-                      autoFocus
-                      disabled={
-                        busy ||
-                        !isActiveReserve ||
-                        (liveState?.phase === "winner" && !revising) ||
-                        (liveState?.phase !== "project" && liveState?.phase !== "winner")
-                      }
-                      onChange={(e) => setDrawInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    />
-                    {awaitingConfirm && !revising && liveState?.winning_company && (
-                      <p className="admin-v2-winner-name">{liveState.winning_company.name}</p>
-                    )}
-                    {awaitingConfirm && !revising && (
-                      <p className="admin-v2-done-hint">
-                        Keputusan dipapar. Tekan «Kemaskini» jika silap, atau «Simpanan Seterusnya».
-                      </p>
-                    )}
-                    {revising && (
-                      <p className="admin-v2-revise-hint">Masukkan nombor betul (3 digit, auto papar).</p>
-                    )}
-                  </div>
+                  {renderDrawEntry(isActiveReserve)}
 
                   {awaitingConfirm && (
                     <div className="admin-v2-actions">
@@ -410,36 +471,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <>
-              <div className="admin-v2-draw">
-                <label htmlFor="dn">Nombor undian (auto papar bila lengkap)</label>
-                <input
-                  id="dn"
-                  className="admin-v2-num"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="001"
-                  value={drawInput}
-                  autoFocus
-                  disabled={
-                    busy ||
-                    !isActiveProject ||
-                    (liveState?.phase === "winner" && !revising) ||
-                    (liveState?.phase !== "project" && liveState?.phase !== "winner")
-                  }
-                  onChange={(e) => setDrawInput(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                />
-                {isActiveProject && awaitingConfirm && !revising && liveState?.winning_company && (
-                  <p className="admin-v2-winner-name">{liveState.winning_company.name}</p>
-                )}
-                {isActiveProject && awaitingConfirm && !revising && (
-                  <p className="admin-v2-done-hint">
-                    Keputusan dipapar. Tekan «Kemaskini» jika silap, atau «Projek Seterusnya».
-                  </p>
-                )}
-                {revising && (
-                  <p className="admin-v2-revise-hint">Masukkan nombor betul (3 digit, auto papar).</p>
-                )}
-              </div>
+              {renderDrawEntry(isActiveProject)}
 
               {isActiveProject && awaitingConfirm && (
               <div className="admin-v2-actions">

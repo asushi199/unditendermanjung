@@ -72,7 +72,7 @@ Skrip akan: sync logo → build frontend → **cari port kosong** (8088, 8090, �
 ## Ciri utama
 
 - **4 kaunter** — URL berasingan, rekod `counter_id` dalam CSV
-- **Nombor undian** — 001, 002, … tanpa had kuota; setiap syarikat satu nombor sahaja
+- **Nombor undian** — 1, 2, … sehingga bilangan berdaftar (~719 syarikat dalam senarai); setiap syarikat satu nombor sahaja
 - **Syarikat tambahan** — import CSV + tambah manual (PIN) pada halaman kaunter
 - **Undian 2 fasa** — paparan projek → masukkan nombor → paparan pemenang; **Kemaskini** sebelum «Projek Seterusnya»
 - **Eksport & cetak** — CSV + halaman cetak/PDF dari panel Utiliti admin
@@ -89,7 +89,7 @@ Skrip akan: sync logo → build frontend → **cari port kosong** (8088, 8090, �
 ### Urusetia (`/admin`)
 
 1. Pilih projek → tayar ke skrin (fasa projek)
-2. Masukkan nombor undian → paparan pemenang
+2. Masukkan nombor undian → tekan Enter atau «Papar» → paparan pemenang
 3. Salah? **Kemaskini** (sebelum «Projek Seterusnya»)
 4. **Projek Seterusnya** — simpan keputusan, projek seterusnya
 5. Selepas **semua projek** selesai — undian **Syarikat Simpanan 1–15** (syarikat sandaran jika pemenang berundur)
@@ -127,7 +127,7 @@ python scripts\test_draw_flow.py
 
 - 活动电脑装 Python + Node，运行 `start_server.bat`
 - 四个柜台：`/register/1`～`/register/4`；主持 `/admin`；投影 `/display`
-- 公司名单合并两个 CSV；号码 sequential，不限 384
+- 公司名单合并两个 CSV，约 719 间；号码 sequential 1…N（N = 当日登记数）
 - 活动前改 `ADMIN_PIN`；勿提交数据库到 Git
 - 打印：`/cetak/pendaftaran`、`/cetak/keputusan`
 

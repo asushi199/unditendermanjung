@@ -4,9 +4,6 @@ from datetime import datetime, timedelta, timezone
 
 from config import DB_PATH
 
-# Paparan: minimum 3 digit; 1000+ tanpa had kuota
-MIN_DRAW_NUMBER_DIGITS = 3
-
 SCHEMA = """
 PRAGMA journal_mode=WAL;
 
@@ -161,8 +158,6 @@ def log_audit(conn: sqlite3.Connection, action: str, details: str = "", counter_
 
 
 def format_draw_number(n: int) -> str:
-    if n < 1000:
-        return f"{n:03d}"
     return str(n)
 
 

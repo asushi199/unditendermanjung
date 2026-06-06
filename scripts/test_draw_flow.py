@@ -41,14 +41,14 @@ def main():
     except urllib.error.HTTPError:
         pass
 
-    post("/api/draw/winner", {"draw_number": "001"})
+    post("/api/draw/winner", {"draw_number": "1"})
     state = get("/api/state")
     assert state["phase"] == "winner"
 
-    post("/api/draw/winner", {"draw_number": "001"})
+    post("/api/draw/winner", {"draw_number": "1"})
     state = get("/api/state")
     assert state["phase"] == "winner"
-    assert state["winning_draw_number"] == "001"
+    assert state["winning_draw_number"] == "1"
 
     post("/api/draw/next")
     assert get("/api/state")["phase"] == "idle"
