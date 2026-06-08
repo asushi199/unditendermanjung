@@ -1318,6 +1318,17 @@ body.display-mode {
   border-bottom: 1px solid var(--border);
 }
 
+.admin-v2-list-hint {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+
 .admin-v2-list ul {
   list-style: none;
   margin: 0;
@@ -1362,6 +1373,11 @@ body.display-mode {
 
 .admin-v2-proj.done {
   opacity: 0.7;
+}
+
+.admin-v2-proj:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .admin-v2-list-reserve-h {
@@ -2080,9 +2096,8 @@ body.print-landscape {
 .print-table--results .col-num { width: 7%; }
 .print-table--results .col-co { width: 45%; }
 
-.print-table--register .col-bil { width: 5%; }
-.print-table--register .col-num { width: 8%; }
-.print-table--register .col-co { width: 48%; }
+.print-table--register .col-num { width: 10%; }
+.print-table--register .col-co { width: 50%; }
 .print-table--register .col-kt { width: 7%; }
 .print-table--register .col-time { width: 32%; }
 

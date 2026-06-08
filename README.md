@@ -92,7 +92,7 @@ Skrip akan: sync logo → build frontend → **cari port kosong** (8088, 8090, �
 2. Masukkan nombor undian → tekan Enter atau «Papar» → paparan pemenang
 3. Salah? **Kemaskini** (sebelum «Projek Seterusnya»)
 4. **Projek Seterusnya** — simpan keputusan, projek seterusnya
-5. Selepas **semua projek** selesai — undian **Syarikat Simpanan 1–15** (syarikat sandaran jika pemenang berundur)
+5. Selepas **semua projek** selesai — undian **Syarikat Simpanan 1–10** (syarikat sandaran jika pemenang berundur)
 
 ### Latihan
 

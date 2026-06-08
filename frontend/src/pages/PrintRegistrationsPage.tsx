@@ -66,7 +66,6 @@ export default function PrintRegistrationsPage() {
       <table className="print-table print-table--register">
         <thead>
           <tr>
-            <th className="col-bil">Bil</th>
             <th className="col-num">Nombor</th>
             <th className="col-co">Nama Syarikat</th>
             <th className="col-kt">Kaunter</th>
@@ -76,7 +75,6 @@ export default function PrintRegistrationsPage() {
         <tbody>
           {rows.map((r, i) => (
             <tr key={`${r.draw_number}-${i}`}>
-              <td className="col-bil">{i + 1}</td>
               <td className="col-num num">{r.draw_number}</td>
               <td className="col-co print-cell-wrap">{r.company_name}</td>
               <td className="col-kt">{r.counter_id}</td>

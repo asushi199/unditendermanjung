@@ -70,6 +70,28 @@ def _all_draws_completed(conn) -> bool:
     return n_reserves >= RESERVE_SLOTS
 
 
+def _draw_started(conn) -> bool:
+    return conn.execute("SELECT COUNT(*) FROM draw_results").fetchone()[0] > 0
+
+
+def _first_project_row(conn):
+    return conn.execute(
+        "SELECT id, bil FROM projects ORDER BY bil LIMIT 1"
+    ).fetchone()
+
+
+def _ensure_draw_starts_at_first_project(conn, project_bil: int) -> None:
+    if _draw_started(conn):
+        return
+    first = _first_project_row(conn)
+    if not first:
+        return
+    if project_bil != first["bil"]:
+        raise ValueError(
+            f"Undian belum bermula. Mula dengan Projek #{first['bil']} terlebih dahulu."
+        )
+
+
 def _session_snapshot(conn) -> dict:
     row = conn.execute("SELECT * FROM draw_session WHERE id = 1").fetchone()
     project = None
@@ -451,6 +473,7 @@ def reveal_project(project_id: int) -> dict:
         ).fetchone()
         if not project:
             raise ValueError("Projek tidak dijumpai.")
+        _ensure_draw_starts_at_first_project(conn, project["bil"])
         done = conn.execute(
             "SELECT draw_number, company_id FROM draw_results WHERE project_id = ?",
             (project_id,),
@@ -716,6 +739,7 @@ def stats() -> dict:
             "registration_count": n,
             "next_number": format_draw_number(next_val),
             "projects_completed": n_projects_done,
+            "draw_started": n_projects_done > 0,
             "total_projects": n_projects,
             "reserves_completed": n_reserves_done,
             "total_reserves": RESERVE_SLOTS,

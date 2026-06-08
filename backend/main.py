@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from config import STATIC_DIR
+from config import RESERVE_SLOTS, STATIC_DIR
 from database import format_datetime_myt, format_draw_number, get_connection, init_db
 from services import (
     backup_db,
@@ -86,7 +86,7 @@ class RevealBody(BaseModel):
 
 
 class RevealReserveBody(BaseModel):
-    slot: int = Field(ge=1, le=15)
+    slot: int = Field(ge=1, le=RESERVE_SLOTS)
 
 
 class WinnerBody(BaseModel):

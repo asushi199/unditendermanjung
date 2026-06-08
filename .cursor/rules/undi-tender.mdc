@@ -20,6 +20,7 @@ Sistem pendaftaran syarikat + undian projek sekolah. Stack: FastAPI + SQLite + R
 - **Senarai syarikat:** ~719 (dua CSV digabung); kuota undian = bilangan berdaftar hari acara
 - **Nombor undian:** sequential 1…N (N = pendaftaran); paparan plain `1`/`19` (bukan `001`); Admin sahkan dengan Enter atau butang «Papar» (bukan auto)
 - **Draw:** fasa `idle` → `project` → `winner`; `next_project` simpan ke `draw_results`
+- **Mula undian:** sebelum projek pertama disahkan (`draw_results` kosong), hanya Projek #1 (bil minimum) boleh ditayar; selepas itu bebas pilih projek
 - **Kemaskini:** `submit_winner` dibenarkan dalam fasa `winner`; selepas `next_project` tidak boleh ubah
 - **Port:** `start_server.bat` auto pilih port kosong; elak 8080 (Acer)
 

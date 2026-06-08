@@ -33,11 +33,18 @@ export default function AdminPage() {
   const liveState = useLiveState(liveSyncOptions());
   const submittingRef = useRef(false);
 
+  function canSelectProject(p: ProjectRow): boolean {
+    if (drawStarted) return true;
+    return firstProject != null && p.id === firstProject.id;
+  }
+
   const load = useCallback(() => {
     fetchProjects().then((list) => {
       setProjects(list);
       setSelectedId((prev) => {
         if (selectedReserveSlot !== null) return prev;
+        const started = list.some((p) => p.completed);
+        if (!started && list[0]) return list[0].id;
         if (prev && list.some((p) => p.id === prev)) return prev;
         return list.find((p) => !p.completed)?.id ?? list[0]?.id ?? null;
       });
@@ -69,6 +76,8 @@ export default function AdminPage() {
   const isActiveDraw = isActiveProject || isActiveReserve;
   const awaitingConfirm = isActiveDraw && liveState?.phase === "winner";
   const inReserveMode = selectedReserveSlot !== null;
+  const drawStarted = Number(stats.projects_completed ?? 0) > 0;
+  const firstProject = projects[0] ?? null;
   const maxDrawN = (stats.registration_count as number) || 0;
   const maxDrawLen = maxDrawN > 0 ? String(maxDrawN).length : 3;
 
@@ -193,6 +202,14 @@ export default function AdminPage() {
   }
 
   async function selectAndProject(p: ProjectRow) {
+    if (!canSelectProject(p)) {
+      setError(
+        firstProject
+          ? `Undian belum bermula. Mula dengan Projek #${firstProject.bil} terlebih dahulu.`
+          : "Undian belum bermula."
+      );
+      return;
+    }
     setSelectedReserveSlot(null);
     setSelectedId(p.id);
     setDrawInput("");
@@ -350,14 +367,25 @@ export default function AdminPage() {
       <div className="admin-v2-body">
         <aside className="admin-v2-list">
           <h3>Projek — klik untuk tayar</h3>
+          {!drawStarted && firstProject && (
+            <p className="admin-v2-list-hint">
+              Undian belum bermula — mulakan Projek #{firstProject.bil}. Projek lain dibuka selepas
+              projek pertama disahkan.
+            </p>
+          )}
           <ul>
             {projects.map((p) => (
               <li key={p.id}>
                 <button
                   type="button"
-                  className={`admin-v2-proj ${selectedId === p.id ? "on" : ""} ${p.completed ? "done" : ""}`}
+                  className={`admin-v2-proj ${selectedId === p.id ? "on" : ""} ${p.completed ? "done" : ""} ${!canSelectProject(p) ? "locked" : ""}`}
                   onClick={() => selectAndProject(p)}
-                  disabled={busy}
+                  disabled={busy || !canSelectProject(p)}
+                  title={
+                    !canSelectProject(p) && firstProject
+                      ? `Mula dengan Projek #${firstProject.bil} dahulu`
+                      : undefined
+                  }
                 >
                   <span className="n">#{p.bil}</span>
                   <span className="s">{p.school}</span>
